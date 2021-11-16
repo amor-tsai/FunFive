@@ -11,7 +11,6 @@ import Foundation
 
 // I set this protocol because I want to pass values to the viewController
 protocol ModelWrapperDelegate: AnyObject{
-    func dsidWillChange(value:Any)
     func predictionWillChange(value:Any)
 }
 
@@ -32,14 +31,6 @@ class ModelWrapper: NSObject{
         return URLSession(configuration: sessionConfig)
     }()
     
-    // change model via different dsid
-    var dsid: Int = 1 {
-        willSet(newValue){
-            // to delegate to viewController so that it can receive the value changed in order to update UI
-            delegate?.dsidWillChange(value: newValue)
-        }
-    }
-    
     // get the prediction result
     private var prediction: Int = -1 {
         willSet(newValue){
@@ -55,15 +46,13 @@ class ModelWrapper: NSObject{
         case negative
     }
     
-    init(url:String, delegate:ModelWrapperDelegate, dsid:Int) {
+    init(url:String, delegate:ModelWrapperDelegate) {
         self.serverURL = url
         self.delegate = delegate
-        self.dsid = dsid
-        
     }
 
     // feed data into the model
-    func sendDataWithString(_ content:String, withLabel label:Int) {
+    func sendDataWithString(_ content:String, withLabel label:Int, dsid:Int) {
         let baseURL = "\(serverURL)/AddDataPoint"
         let postURL = URL(string: "\(baseURL)")
         
@@ -73,7 +62,7 @@ class ModelWrapper: NSObject{
         // data to send in body of post request (send arguments as json)
         let jsonUpload:NSDictionary = ["feature":content,
                                        "label":"\(label)",
-                                       "dsid":self.dsid]
+                                       "dsid":dsid]
         
         
         let requestBody:Data? = self.convertDictionaryToData(with:jsonUpload)
@@ -100,7 +89,7 @@ class ModelWrapper: NSObject{
         postTask.resume() // start the task
     }
     
-    func getPrediction(_ recordingContent:String){
+    func getPrediction(_ recordingContent:String, dsid:Int){
         let baseURL = "\(serverURL)/PredictOne"
         let postURL = URL(string: "\(baseURL)")
         
@@ -108,7 +97,7 @@ class ModelWrapper: NSObject{
         var request = URLRequest(url: postURL!)
         
         // data to send in body of post request (send arguments as json)
-        let jsonUpload:NSDictionary = ["feature":recordingContent, "dsid":self.dsid]
+        let jsonUpload:NSDictionary = ["feature":recordingContent, "dsid":dsid]
         
         
         let requestBody:Data? = self.convertDictionaryToData(with:jsonUpload)
@@ -137,11 +126,11 @@ class ModelWrapper: NSObject{
         postTask.resume() // start the task
     }
     
-    func makeModel() {
+    func makeModel(dsid:Int) {
         
         // create a GET request for server to update the ML model with current data
         let baseURL = "\(serverURL)/UpdateModel"
-        let query = "?dsid=\(self.dsid)"
+        let query = "?dsid=\(dsid)"
         
         let getUrl = URL(string: baseURL+query)
         let request: URLRequest = URLRequest(url: getUrl!)

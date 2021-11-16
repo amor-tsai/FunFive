@@ -28,8 +28,11 @@ class ViewController: UIViewController, ModelWrapperDelegate {
     // server url
     private let SERVER_URL = "http://192.168.1.120:8000"
     
+    // model id(1 represents LSTM, 2 represents GRU)
+    private var dsid = 1
+    
     private lazy var modelWrapper:ModelWrapper = {
-        let model = ModelWrapper(url: SERVER_URL, delegate: self, dsid: 1)
+        let model = ModelWrapper(url: SERVER_URL, delegate: self)
         return model
     }()
     
@@ -37,7 +40,11 @@ class ViewController: UIViewController, ModelWrapperDelegate {
     override func viewDidLoad() {
         super.viewDidLoad()
         
+        // set multiline text
+        self.dictation.numberOfLines = 5
         
+        //
+        self.coreMLSwitch.isOn = false
     }
     
     // It's called when dsid will change
@@ -181,7 +188,7 @@ class ViewController: UIViewController, ModelWrapperDelegate {
     func recordingReleasedEvent() {
         // get text from speech recognition
         if let recordingContent = self.dictation.text {
-            if self.predictionSwitch.isOn {
+            if self.trainSwitch.isOn {
                 // It's in model training mode so it'll send data to the server
                 var label:Int
                 if self.labelSwitch.isOn {
@@ -189,36 +196,35 @@ class ViewController: UIViewController, ModelWrapperDelegate {
                 } else {
                     label = 0
                 }
-                modelWrapper.sendDataWithString(recordingContent, withLabel: label)
+                modelWrapper.sendDataWithString(recordingContent, withLabel: label, dsid: self.dsid)
                 
             } else {
                 // It's in model prediction mode so it'll get prediction
-                modelWrapper.getPrediction(recordingContent)
+                modelWrapper.getPrediction(recordingContent,dsid: self.dsid)
                 
             }
         }
         
-        
-
-        
-
     }
     
     // text converted from voice will appear here
     @IBOutlet weak var dictation: UILabel!
     
     @IBOutlet weak var classification: UILabel!
-    @IBOutlet weak var predictionSwitchDesc: UILabel!
-    @IBOutlet weak var predictionSwitch: UISwitch!
+    @IBOutlet weak var trainSwitchDesc: UILabel!
+    @IBOutlet weak var trainSwitch: UISwitch!
     @IBOutlet weak var labelSwitch: UISwitch!
     @IBOutlet weak var labelSwitchDesc: UILabel!
+    @IBOutlet weak var coreMLSwitch: UISwitch!
+    @IBOutlet weak var coreMLSwitchDesc: UILabel!
+    
     
     // use this to change the mode between training and making prediction
     @IBAction func switchMode(_ sender: Any) {
-        if predictionSwitch.isOn {
-            predictionSwitchDesc.text = "Train mode ON"
+        if trainSwitch.isOn {
+            trainSwitchDesc.text = "Train mode ON"
         } else {
-            predictionSwitchDesc.text = "Train mode OFF"
+            trainSwitchDesc.text = "Train mode OFF"
         }
     }
     
@@ -231,12 +237,46 @@ class ViewController: UIViewController, ModelWrapperDelegate {
         }
     }
     
-    // make model
-    @IBAction func sendUpdateModelRequest(_ sender: Any) {
-        modelWrapper.makeModel()
+    // use this to change the model between remote model and coreML
+    // I tried to use coreML here, but I have some issues.
+    // 1. my env uses tensorflow 2.6, but coreML convertion tool doesn't support tensorflow 2.6
+    // 2. A vectorization from a string is needed, but I need time to figure out how to do in swift. I can ask for server to do it for me, either.
+    // 3. some libraries can't complie if I try to install tensorflow 2.5, that means I need time to fix the compatibility problem.
+    // 4. other issues when converting RNN Model to CoreML
+    // so I just leave the button here, If I can fix those issues then I can open it again.
+    @IBAction func switchCoreML(_ sender: Any) {
+        if coreMLSwitch.isOn {
+            coreMLSwitchDesc.text = "CoreML Disable"
+        } else {
+            coreMLSwitchDesc.text = "CoreML Disable"
+        }
     }
     
+    // make model
+    @IBAction func sendUpdateModelRequest(_ sender: Any) {
+        modelWrapper.makeModel(dsid: self.dsid)
+    }
     
+    // use segmented control to switch different model
+    // it can also switch to different prediction based on other values from switchs
+    @IBAction func modelSelectChanged(_ sender: UISegmentedControl) {
+        switch sender.selectedSegmentIndex{
+        case 0:
+            self.dsid  = 1
+        case 1:
+            self.dsid = 2
+            
+        default:
+            return
+        }
+        
+        // if train mode is off, then try to get a prediction.
+        if let recognitionContent = self.dictation.text {
+            if self.trainSwitch.isOn == false {
+                modelWrapper.getPrediction(recognitionContent, dsid: self.dsid)
+            }
+        }
+    }
     
 }
 
