@@ -26,11 +26,23 @@ class ViewController: UIViewController, ModelWrapperDelegate {
     private let audioEngine = AVAudioEngine()
     
     // server url
-    private let SERVER_URL = "http://192.168.1.120:8000"
+    private let SERVER_URL = "http://192.168.1.120:8000" // in-house server
+//    private let SERVER_URL = "http://10.8.104.90:8000" //
     
     // model id(1 represents LSTM, 2 represents GRU)
+    // this value can be changed by segmented control
     private var dsid = 1
     
+    // use this to determine how many epochs the model should run
+    private var epochs = 1 {
+        willSet(newValue) {
+            DispatchQueue.main.async {
+                self.epochsLable.text = "Current epochs \(newValue)"
+            }
+        }
+    }
+    
+    // use delegate here so I can pass message from ModelWrapper to this viewController
     private lazy var modelWrapper:ModelWrapper = {
         let model = ModelWrapper(url: SERVER_URL, delegate: self)
         return model
@@ -43,17 +55,22 @@ class ViewController: UIViewController, ModelWrapperDelegate {
         // set multiline text
         self.dictation.numberOfLines = 5
         
+        // max and min value of epochs
+        self.epochsAdjustment.maximumValue = 20
+        self.epochsAdjustment.minimumValue = 1
+        
         //
-        self.coreMLSwitch.isOn = false
+        self.dictation.layer.masksToBounds = true
+        self.dictation.layer.cornerRadius = 20
+        
+        self.classification.layer.masksToBounds = true
+        self.classification.layer.cornerRadius = 20
+        
     }
+
     
-    // It's called when dsid will change
-    func dsidWillChange(value: Any) {
-        // do something
-        print(value)
-    }
-    
-    // It's called when there will be a prediction
+    // It's called when there will be a new prediction in ModelWrapper
+    // since I implemented the ModelWrapperDelegate protocol
     func predictionWillChange(value: Any) {
         // do something
         if let pred = value as? Int {
@@ -66,6 +83,21 @@ class ViewController: UIViewController, ModelWrapperDelegate {
                     self.classification.text = "Negative"
                 }
             }
+        }
+    }
+    
+    // It's called when there will be a new accuracy value after the model update
+    // since I implemented the ModelWrapperDelegate protocol
+    func accuracyWillChange(value: Double) {
+        var modelName:String
+        if self.dsid == 1 {
+            modelName = "LSTM"
+        } else {
+            modelName = "GRU"
+        }
+        
+        DispatchQueue.main.async {
+            self.classification.text = "\(modelName) accuracy: \(String(format: "%.3f", value))"
         }
     }
     
@@ -215,9 +247,8 @@ class ViewController: UIViewController, ModelWrapperDelegate {
     @IBOutlet weak var trainSwitch: UISwitch!
     @IBOutlet weak var labelSwitch: UISwitch!
     @IBOutlet weak var labelSwitchDesc: UILabel!
-    @IBOutlet weak var coreMLSwitch: UISwitch!
-    @IBOutlet weak var coreMLSwitchDesc: UILabel!
-    
+    @IBOutlet weak var epochsLable: UILabel!
+    @IBOutlet weak var epochsAdjustment: UISlider!
     
     // use this to change the mode between training and making prediction
     @IBAction func switchMode(_ sender: Any) {
@@ -242,19 +273,21 @@ class ViewController: UIViewController, ModelWrapperDelegate {
     // 1. my env uses tensorflow 2.6, but coreML convertion tool doesn't support tensorflow 2.6
     // 2. A vectorization from a string is needed, but I need time to figure out how to do in swift. I can ask for server to do it for me, either.
     // 3. some libraries can't complie if I try to install tensorflow 2.5, that means I need time to fix the compatibility problem.
-    // 4. other issues when converting RNN Model to CoreML
+    // 4. other issues when converting RNN Model to CoreML such as BatchNormalization does not support in keras normalization
     // so I just leave the button here, If I can fix those issues then I can open it again.
-    @IBAction func switchCoreML(_ sender: Any) {
-        if coreMLSwitch.isOn {
-            coreMLSwitchDesc.text = "CoreML Disable"
-        } else {
-            coreMLSwitchDesc.text = "CoreML Disable"
-        }
-    }
+    
+//    @IBAction func switchCoreML(_ sender: Any) {
+//        if coreMLSwitch.isOn {
+//            coreMLSwitchDesc.text = "CoreML Disable"
+//        } else {
+//            coreMLSwitchDesc.text = "CoreML Disable"
+//        }
+//    }
     
     // make model
+    // we can choose model by dsid or change the epochs the model shoud run
     @IBAction func sendUpdateModelRequest(_ sender: Any) {
-        modelWrapper.makeModel(dsid: self.dsid)
+        modelWrapper.makeModel(dsid: self.dsid, epochs: self.epochs)
     }
     
     // use segmented control to switch different model
@@ -265,7 +298,6 @@ class ViewController: UIViewController, ModelWrapperDelegate {
             self.dsid  = 1
         case 1:
             self.dsid = 2
-            
         default:
             return
         }
@@ -277,6 +309,11 @@ class ViewController: UIViewController, ModelWrapperDelegate {
             }
         }
     }
+    
+    @IBAction func adjustEpochs(_ sender: UISlider) {
+        self.epochs = Int(sender.value)
+    }
+    
     
 }
 

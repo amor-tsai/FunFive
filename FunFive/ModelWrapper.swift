@@ -12,6 +12,7 @@ import Foundation
 // I set this protocol because I want to pass values to the viewController
 protocol ModelWrapperDelegate: AnyObject{
     func predictionWillChange(value:Any)
+    func accuracyWillChange(value:Double)
 }
 
 class ModelWrapper: NSObject{
@@ -20,6 +21,8 @@ class ModelWrapper: NSObject{
     
     // Model Server address
     private var serverURL = ""
+    // this key is for authentication, it will be stored in the cookie
+    private let passKey = "h7hdg43scbmdTRY7hbv321szxcdOPd2mz1"
     
     private var session: URLSession = {
         let sessionConfig = URLSessionConfiguration.ephemeral
@@ -38,12 +41,13 @@ class ModelWrapper: NSObject{
             delegate?.predictionWillChange(value: newValue)
         }
     }
-
-    //
-    enum sentiment{
-        case nothing
-        case positve
-        case negative
+    
+    // the accuracy of the model
+    private var accuracy: Double = 0.0 {
+        willSet(newValue){
+            // It's to delegate to any implemented ModelWrapperDelegate so that it can receive the event of value changed in order to update UI
+            delegate?.accuracyWillChange(value: newValue)
+        }
     }
     
     init(url:String, delegate:ModelWrapperDelegate) {
@@ -69,6 +73,10 @@ class ModelWrapper: NSObject{
         
         request.httpMethod = "POST"
         request.httpBody = requestBody
+        
+        // set cookies for authentication
+        request.setValue("pass=\(passKey)", forHTTPHeaderField: "Cookie")
+        request.httpShouldHandleCookies = true
         
         let postTask : URLSessionDataTask = self.session.dataTask(with: request,
             completionHandler:{(data, response, error) in
@@ -105,6 +113,10 @@ class ModelWrapper: NSObject{
         request.httpMethod = "POST"
         request.httpBody = requestBody
         
+        // set cookies for authentication
+        request.setValue("pass=\(passKey)", forHTTPHeaderField: "Cookie")
+        request.httpShouldHandleCookies = true
+        
         let postTask : URLSessionDataTask = self.session.dataTask(with: request,
                                                                   completionHandler:{
                         (data, response, error) in
@@ -126,14 +138,19 @@ class ModelWrapper: NSObject{
         postTask.resume() // start the task
     }
     
-    func makeModel(dsid:Int) {
+    func makeModel(dsid:Int,epochs:Int) {
         
         // create a GET request for server to update the ML model with current data
         let baseURL = "\(serverURL)/UpdateModel"
-        let query = "?dsid=\(dsid)"
-        
+        let query = "?dsid=\(dsid)&epochs=\(epochs)"
+    
         let getUrl = URL(string: baseURL+query)
-        let request: URLRequest = URLRequest(url: getUrl!)
+        var request: URLRequest = URLRequest(url: getUrl!)
+        
+        // set cookies
+        request.setValue("pass=\(passKey)", forHTTPHeaderField: "Cookie")
+        request.httpShouldHandleCookies = true
+        
         let dataTask : URLSessionDataTask = self.session.dataTask(with: request,
               completionHandler:{(data, response, error) in
                 // handle error!
@@ -146,6 +163,7 @@ class ModelWrapper: NSObject{
                     let jsonDictionary = self.convertDataToDictionary(with: data)
                     
                     if let resubAcc = jsonDictionary["resubAccuracy"]{
+                        self.accuracy = resubAcc as! Double
                         print("Resubstitution Accuracy is", resubAcc)
                     }
                 }
