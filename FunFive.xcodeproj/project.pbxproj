@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		3167633127421DEC000C2877 /* ModelWrapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3167633027421DEC000C2877 /* ModelWrapper.swift */; };
+		31676333274C4B49000C2877 /* SpeechRecognizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31676332274C4B49000C2877 /* SpeechRecognizer.swift */; };
 		31BB207F2739B9C00050A83F /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31BB207E2739B9C00050A83F /* AppDelegate.swift */; };
 		31BB20812739B9C00050A83F /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31BB20802739B9C00050A83F /* SceneDelegate.swift */; };
 		31BB20832739B9C00050A83F /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31BB20822739B9C00050A83F /* ViewController.swift */; };
@@ -19,6 +20,7 @@
 
 /* Begin PBXFileReference section */
 		3167633027421DEC000C2877 /* ModelWrapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelWrapper.swift; sourceTree = "<group>"; };
+		31676332274C4B49000C2877 /* SpeechRecognizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechRecognizer.swift; sourceTree = "<group>"; };
 		31BB207B2739B9C00050A83F /* FunFive.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FunFive.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		31BB207E2739B9C00050A83F /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		31BB20802739B9C00050A83F /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
@@ -67,6 +69,7 @@
 				31BB207E2739B9C00050A83F /* AppDelegate.swift */,
 				31BB20802739B9C00050A83F /* SceneDelegate.swift */,
 				31BB20822739B9C00050A83F /* ViewController.swift */,
+				31676332274C4B49000C2877 /* SpeechRecognizer.swift */,
 				31BB20842739B9C00050A83F /* Main.storyboard */,
 				3167633027421DEC000C2877 /* ModelWrapper.swift */,
 				31BB20872739B9C10050A83F /* Assets.xcassets */,
@@ -155,6 +158,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				31676333274C4B49000C2877 /* SpeechRecognizer.swift in Sources */,
 				31BB20832739B9C00050A83F /* ViewController.swift in Sources */,
 				31BB207F2739B9C00050A83F /* AppDelegate.swift in Sources */,
 				31BB20812739B9C00050A83F /* SceneDelegate.swift in Sources */,

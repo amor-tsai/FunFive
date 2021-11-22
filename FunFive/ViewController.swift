@@ -10,7 +10,7 @@ import AVFoundation
 import Speech
 
 // starter code from https://github.com/SMU-MSLC/SpeechAndSoundAnalysis
-class ViewController: UIViewController, ModelWrapperDelegate {
+class ViewController: UIViewController, ModelWrapperDelegate, SpeechRecognizerDelegate {
     
     // MARK: Properties
     // The speech recogniser used by the controller to record the user's speech.
@@ -46,6 +46,11 @@ class ViewController: UIViewController, ModelWrapperDelegate {
     private lazy var modelWrapper:ModelWrapper = {
         let model = ModelWrapper(url: SERVER_URL, delegate: self)
         return model
+    }()
+    
+    private lazy var speechRecognizer:SpeechRecognizer = {
+        let speechRecognizer = SpeechRecognizer(delegate: self)
+        return speechRecognizer
     }()
     
     // MARK: UI LifeCycle
@@ -86,6 +91,13 @@ class ViewController: UIViewController, ModelWrapperDelegate {
         }
     }
     
+    // It's called when there is a new spoken text recognized
+    func spokenTextReconized(value: String) {
+        DispatchQueue.main.async {
+            self.dictation.text = value
+        }
+    }
+    
     // It's called when there will be a new accuracy value after the model update
     // since I implemented the ModelWrapperDelegate protocol
     func accuracyWillChange(value: Double) {
@@ -101,94 +113,6 @@ class ViewController: UIViewController, ModelWrapperDelegate {
         }
     }
     
-    // MARK: SFAudioTranscription
-    func startRecording() {
-        // setup recongizer
-        guard speechRecogniser.isAvailable else {
-            // Speech recognition is unavailable, so do not attempt to start.
-            return
-        }
-        
-        // make sure we have permission
-        guard SFSpeechRecognizer.authorizationStatus() == .authorized else {
-            SFSpeechRecognizer.requestAuthorization({ (status) in
-                // Handle the user's decision
-                print(status)
-            })
-            return
-        }
-        
-        
-        // setup audio
-        let audioSession = AVAudioSession.sharedInstance()
-        do{
-            try audioSession.setCategory(AVAudioSession.Category.record)
-            try audioSession.setMode(AVAudioSession.Mode.measurement)
-            try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
-        }
-        catch {
-            fatalError("Audio engine could not be setup")
-            
-        }
-
-        if recognitionRequest == nil {
-            // setup reusable request (if not already)
-            recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
-            
-            // perform on device, if possible
-            // NOTE: this will usually limit the voice analytics results
-            if speechRecogniser.supportsOnDeviceRecognition {
-                print("Using on device recognition, voice analytics may be limited.")
-                recognitionRequest?.requiresOnDeviceRecognition = true
-            }else{
-                print("Using server for recognition.")
-            }
-        }
-        
-
-        let inputNode = audioEngine.inputNode
-        guard let recognitionRequest = recognitionRequest else {
-            // Handle error
-            return
-        }
-        
-        recognitionTask = speechRecogniser.recognitionTask(with: recognitionRequest) { [unowned self] result, error in
-            if let result = result {
-                let spokenText = result.bestTranscription.formattedString
-                DispatchQueue.main.async{
-                    // fill in the label here
-                    self.dictation.text = spokenText
-                }
-            }
-            
-            if result?.isFinal ?? (error != nil) {
-                // this will remove the listening tap
-                // so that the transcription stops
-                inputNode.removeTap(onBus: 0)
-            }
-        }
-        
-        let recordingFormat = inputNode.outputFormat(forBus: 0)
-        inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { (buffer: AVAudioPCMBuffer, when: AVAudioTime) in
-            self.recognitionRequest?.append(buffer)
-        }
-
-        audioEngine.prepare()
-        do{
-            try audioEngine.start()
-        }
-        catch {
-            fatalError("Audio engine could not start")
-        }
-    }
-    
-    func stopRecording() {
-        if audioEngine.isRunning{
-            audioEngine.stop()
-            recognitionRequest?.endAudio()
-        }
-    }
-
     // MARK: UI Elements
     @IBAction func recordingPressed(_ sender: UIButton) {
         // make the system symbol larger
@@ -197,13 +121,13 @@ class ViewController: UIViewController, ModelWrapperDelegate {
         sender.setImage(UIImage(systemName: "mic.circle.fill", withConfiguration: largeConfig), for: .normal)
         sender.backgroundColor = UIColor.gray
         
-        self.startRecording()
+        speechRecognizer.startRecording()
 
     }
     
     
     @IBAction func recordingReleased(_ sender: UIButton) {
-        self.stopRecording()
+        speechRecognizer.stopRecording()
         
         // make system symbol larger
         // https://stackoverflow.com/questions/60641048/change-a-sf-symbol-size-inside-a-uibutton
